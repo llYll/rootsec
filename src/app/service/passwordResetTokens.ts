@@ -132,4 +132,30 @@ export class PasswordResetTokensService extends BaseService<PasswordResetTokensE
       return false;
     }
   }
+
+  /**
+   * 发送验证码
+   * @param email
+   * @param code
+   * @returns
+   */
+  async sendEmailVerify(email: string, code: string): Promise<boolean> {
+    const emailProvider = NotificationService.createEmailProvider(
+      this.emailConfig
+    );
+
+    const result = await emailProvider.send({
+      to: email,
+      subject: 'Email Verify',
+      text: 'send email verify code',
+      html: `<p>Verify Code: ${code}</p>`,
+    });
+    if (result.success) {
+      this.logger.info('邮件发送成功:', result.messageId);
+      return true;
+    } else {
+      this.logger.error('邮件发送失败:', result.messageId);
+      return false;
+    }
+  }
 }

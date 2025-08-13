@@ -29,7 +29,8 @@
     "path-to-regexp": "^6.2.1",
     "randomstring": "^1.2.2",
     "sequelize": "^6.21.4",
-    "sequelize-typescript": "^2.1.5"
+    "sequelize-typescript": "^2.1.5",
+    "speakeasy": "^2.0.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^17.0.3",

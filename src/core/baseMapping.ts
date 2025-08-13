@@ -138,4 +138,8 @@ export abstract class BaseMapping<T extends Model> {
     const res = await this.getModel().sequelize.query(sqlStr, option);
     return res;
   }
+
+  async increment(field, where, option?: any) {
+    return await this.getModel().increment(field, { where, ...option });
+  }
 }
