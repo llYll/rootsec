@@ -1,5 +1,4 @@
 import { ILogger, Inject, Logger, Provide } from '@midwayjs/core';
-import * as crypto from 'crypto';
 import { JwtService } from '@midwayjs/jwt';
 
 import { BaseService } from '../../core/baseService';
@@ -43,8 +42,8 @@ export class AdminService extends BaseService<AdminEntity> {
     if (user) {
       throw new MyError('admin has been registered', ErrorLevelEnum.P4);
     }
-    const salt = this._generateSalt(16);
-    const passwordHash = this._hashPassword(password, salt);
+    const salt = this.utils.generateSalt(16);
+    const passwordHash = this.utils.hashPassword(password, salt);
     await this.mapping.saveNew({
       account,
       passwordHash,
@@ -70,33 +69,18 @@ export class AdminService extends BaseService<AdminEntity> {
       throw new MyError('user not active', ErrorLevelEnum.P4);
     }
 
-    const hashedPassword = this._hashPassword(password, admin.passwordSalt);
+    const hashedPassword = this.utils.hashPassword(
+      password,
+      admin.passwordSalt
+    );
     if (hashedPassword !== admin.passwordHash) {
       throw new MyError('password is wrong', ErrorLevelEnum.P4);
     }
 
-    const token = await this._getJwtToken(
+    const token = await this.utils.getJwtToken(
       admin.adminId.toString(),
       admin.account
     );
     return { token };
-  }
-
-  private async _getJwtToken(userId: string, email: string) {
-    const token = await this.jwtService.sign({
-      userId,
-      email,
-    });
-    return token;
-  }
-
-  private _generateSalt(length: number): string {
-    return crypto.randomBytes(length).toString('hex');
-  }
-
-  private _hashPassword(password: string, salt: string): string {
-    return crypto
-      .pbkdf2Sync(password + '', salt, 1000, 64, 'sha512')
-      .toString('hex');
   }
 }

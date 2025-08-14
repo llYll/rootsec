@@ -1,8 +1,11 @@
 import { Provide, Inject, Scope, ScopeEnum } from '@midwayjs/decorator';
 import * as randomstring from 'randomstring';
+import * as crypto from 'crypto';
+import { JwtService } from '@midwayjs/jwt';
 import * as _ from 'lodash';
 import BigNumber from 'bignumber.js';
 import * as speakeasy from 'speakeasy';
+
 import { ErrorLevelEnum, MyError } from './myError';
 
 const DATE_FORMATE = 'YYYY-MM-DD HH:mm:ss';
@@ -14,6 +17,9 @@ type BigParam = BigNumber | string | number;
 export class Utils {
   @Inject('dayjs')
   dayjsTool;
+
+  @Inject()
+  jwtService: JwtService;
 
   isEmpty(value?) {
     return _.isEmpty(value);
@@ -213,5 +219,23 @@ export class Utils {
 
   maskEmail(email) {
     return email.replace(/(.{0,2}).*@(.*)/, '$1****@$2');
+  }
+
+  async getJwtToken(userId: string, email: string) {
+    const token = await this.jwtService.sign({
+      userId,
+      email,
+    });
+    return token;
+  }
+
+  generateSalt(length: number): string {
+    return crypto.randomBytes(length).toString('hex');
+  }
+
+  hashPassword(password: string, salt: string): string {
+    return crypto
+      .pbkdf2Sync(password + '', salt, 1000, 64, 'sha512')
+      .toString('hex');
   }
 }

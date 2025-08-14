@@ -1,5 +1,4 @@
 import { ILogger, Inject, Logger, Provide } from '@midwayjs/core';
-import * as crypto from 'crypto';
 import { JwtService } from '@midwayjs/jwt';
 
 import { UserInfoMapping } from '../mapping/userInfo';
@@ -43,8 +42,8 @@ export class UserService extends BaseService<UserInfoEntity> {
     if (user) {
       throw new MyError('user has been registered', ErrorLevelEnum.P4);
     }
-    const salt = this._generateSalt(16);
-    const passwordHash = this._hashPassword(password, salt);
+    const salt = this.utils.generateSalt(16);
+    const passwordHash = this.utils.hashPassword(password, salt);
     const parent = await this.mapping.findOne({ inviteCode });
     const pid = parent ? parent.userId : 0;
     await this.mapping.saveNew({
@@ -54,7 +53,7 @@ export class UserService extends BaseService<UserInfoEntity> {
       status: UserStatus.NORMAL,
       passwordHash,
       pid,
-      inviteCode: this._generateSalt(6),
+      inviteCode: this.utils.generateSalt(6),
     });
     return true;
   }
@@ -75,12 +74,15 @@ export class UserService extends BaseService<UserInfoEntity> {
       throw new MyError('user not active', ErrorLevelEnum.P4);
     }
 
-    const hashedPassword = this._hashPassword(password, user.passwordSalt);
+    const hashedPassword = this.utils.hashPassword(password, user.passwordSalt);
     if (hashedPassword !== user.passwordHash) {
       throw new MyError('password is wrong', ErrorLevelEnum.P4);
     }
 
-    const token = await this._getJwtToken(user.userId.toString(), user.email);
+    const token = await this.utils.getJwtToken(
+      user.userId.toString(),
+      user.email
+    );
     return { token };
   }
 
@@ -93,15 +95,15 @@ export class UserService extends BaseService<UserInfoEntity> {
     const { password, token } = params;
     const userId = await this.passwordResetTokensService.checkToken(token);
     const user = await this.mapping.findOne({ userId });
-    const oldPwd = this._hashPassword(password, user.passwordSalt);
+    const oldPwd = this.utils.hashPassword(password, user.passwordSalt);
     if (oldPwd === user.passwordHash) {
       throw new MyError(
         'Please use a new password that is different from the original password',
         ErrorLevelEnum.P4
       );
     }
-    const salt = this._generateSalt(16);
-    const passwordHash = this._hashPassword(password, salt);
+    const salt = this.utils.generateSalt(16);
+    const passwordHash = this.utils.hashPassword(password, salt);
     await this.mapping.modify({ salt, passwordHash }, { userId });
     await this.passwordResetTokensService.useToken(token);
     return true;
@@ -137,7 +139,7 @@ export class UserService extends BaseService<UserInfoEntity> {
       throw new MyError('trade password not set', ErrorLevelEnum.P4);
     }
     const { tradePasswordSalt, tradePasswordHash } = user;
-    const checkPassword = this._hashPassword(password, tradePasswordSalt);
+    const checkPassword = this.utils.hashPassword(password, tradePasswordSalt);
     if (checkPassword === tradePasswordHash) {
       return true;
     }
@@ -167,7 +169,7 @@ export class UserService extends BaseService<UserInfoEntity> {
     type: number,
     time: number
   ): Promise<boolean> {
-    const code = this._generateSalt(6);
+    const code = this.utils.generateSalt(6);
     await this.redisUtils.setValue(`${type}:${email}`, code, time);
     await this.passwordResetTokensService.sendEmailVerify(email, code);
     return true;
@@ -193,23 +195,5 @@ export class UserService extends BaseService<UserInfoEntity> {
       throw new MyError('code incorrect', ErrorLevelEnum.P4);
     }
     return true;
-  }
-
-  private async _getJwtToken(userId: string, email: string) {
-    const token = await this.jwtService.sign({
-      userId,
-      email,
-    });
-    return token;
-  }
-
-  private _generateSalt(length: number): string {
-    return crypto.randomBytes(length).toString('hex');
-  }
-
-  private _hashPassword(password: string, salt: string): string {
-    return crypto
-      .pbkdf2Sync(password + '', salt, 1000, 64, 'sha512')
-      .toString('hex');
   }
 }
