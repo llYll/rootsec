@@ -4,6 +4,8 @@ dotenv.config();
 import * as koa from '@midwayjs/koa';
 import * as validate from '@midwayjs/validate';
 import * as crossDomain from '@midwayjs/cross-domain';
+import * as cron from '@midwayjs/cron';
+
 import {
   ILifeCycle,
   IMidwayContainer,
@@ -35,6 +37,7 @@ import { NotFoundFilter } from './filter/notfound';
     validate,
     sequlize,
     jwt,
+    cron,
   ],
 })
 export class ContainerLifeCycle implements ILifeCycle {

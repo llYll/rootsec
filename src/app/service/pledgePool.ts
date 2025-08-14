@@ -1,4 +1,5 @@
 import { ILogger, Inject, Logger, Provide } from '@midwayjs/core';
+import { Op } from 'sequelize';
 
 import { BaseService } from '../../core/baseService';
 import { PledgePoolEntity } from '../entity/pledgePool';
@@ -107,5 +108,38 @@ export class PledgePoolService extends BaseService<PledgePoolEntity> {
     }
     await this.mapping.modify(modifyPool, { poolId });
     return true;
+  }
+
+  /**
+   * 改变状态
+   */
+  async changeStatus() {
+    await this._startPool();
+    await this._endPool();
+  }
+
+  private async _startPool() {
+    const pools = await this.mapping.findAll({
+      status: POOL_STATUS.INIT,
+      startAt: { [Op.lte]: new Date() },
+      endAt: { [Op.gte]: new Date() },
+    });
+    const poolIds = pools.map(item => item.poolId);
+    await this.mapping.modify(
+      { status: POOL_STATUS.STARTING },
+      { poolId: poolIds }
+    );
+  }
+
+  private async _endPool() {
+    const pools = await this.mapping.findAll({
+      status: POOL_STATUS.STARTING,
+      endAt: { [Op.lte]: new Date() },
+    });
+    const poolIds = pools.map(item => item.poolId);
+    await this.mapping.modify(
+      { status: POOL_STATUS.ENDING },
+      { poolId: poolIds }
+    );
   }
 }
