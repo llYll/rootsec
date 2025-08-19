@@ -8,14 +8,31 @@ import {
   AddPledgePoolDTO,
   GetPoolListDTO,
   ModifyPledgePoolDTO,
+  PledgePoolDTO,
 } from '../model/dto/pool';
 import { ErrorLevelEnum, MyError } from '../comm/myError';
 import { POOL_STATUS } from '../constant/pool';
+import { UserAssetService } from './userAsset';
+import { ASSET_FIELD } from '../constant/user';
+import { PROFIT_TYPE } from '../constant/profit';
+import { PledgeRecordMapping } from '../mapping/pledgeRecord';
+import { PledgeRecordEntity } from '../entity/pledgeRecord';
+import { RewardRecordMapping } from '../mapping/rewardRecord';
+import { bigAdd } from 'happy-node-utils';
 
 @Provide()
 export class PledgePoolService extends BaseService<PledgePoolEntity> {
   @Inject()
   mapping: PledgePoolMapping;
+
+  @Inject()
+  userAssetService: UserAssetService;
+
+  @Inject()
+  pledgeRecordMapping: PledgeRecordMapping;
+
+  @Inject()
+  rewardRecordMapping: RewardRecordMapping;
 
   @Logger()
   logger: ILogger;
@@ -72,6 +89,8 @@ export class PledgePoolService extends BaseService<PledgePoolEntity> {
         endAt: item.endAt,
         coinName: coinObj[item.coinId].name || '',
         icon: coinObj[item.coinId].icon || '',
+        iPledgeAmount: 0,
+        iRewardAmount: 0,
       };
     });
     return { count, rows: res };
@@ -111,11 +130,151 @@ export class PledgePoolService extends BaseService<PledgePoolEntity> {
   }
 
   /**
+   * 用户奖池列表
+   * @param param
+   * @returns
+   */
+  async userPoolList(param: GetPoolListDTO) {
+    const userId = this.ctx.userContext.userId;
+    const { rows, count } = await this.getPoolList(param);
+    const poolId = rows.map(item => item.poolId);
+    const pledgeRecords = await this.pledgeRecordMapping.findAll({
+      userId,
+      poolId,
+    });
+    const rewardRecords = await this.rewardRecordMapping.findAll({
+      userId,
+      poolId,
+    });
+    for (const pledgeRecord of pledgeRecords) {
+      const { secAmount, poolId } = pledgeRecord;
+      const poolInfo = rows.find(item => item.poolId == poolId);
+      poolInfo.iPledgeAmount = bigAdd(
+        poolInfo.iPledgeAmount,
+        secAmount
+      ).toNumber();
+    }
+
+    for (const rewardRecord of rewardRecords) {
+      const { rewardAmount, poolId } = rewardRecord;
+      const poolInfo = rows.find(item => item.poolId == poolId);
+      poolInfo.iRewardAmount = bigAdd(
+        poolInfo.iRewardAmount,
+        rewardAmount
+      ).toNumber();
+    }
+    return {
+      rows,
+      count,
+    };
+  }
+
+  /**
    * 改变状态
    */
   async changeStatus() {
     await this._startPool();
     await this._endPool();
+  }
+
+  async buyPledgePool(param: PledgePoolDTO) {
+    const userId = this.ctx.userContext.userId;
+    const { poolId, pledgeAmount } = param;
+    const pool = await this.mapping.findOne({ poolId });
+    if (!pool || pool.status != POOL_STATUS.STARTING) {
+      throw new MyError('pledge pool no support pledge', ErrorLevelEnum.P4);
+    }
+    const secAmount = await this.userAssetService.getUserSecAmount(userId);
+    if (secAmount.balance < pledgeAmount) {
+      throw new MyError('sec balance not enough', ErrorLevelEnum.P4);
+    }
+    const t = await this.mapping.getTransaction();
+    try {
+      await this.userAssetService.modifyUserAsset({
+        userId,
+        coinId: secAmount.coinId,
+        amount: -pledgeAmount,
+        currency: ASSET_FIELD.BALANCE,
+        type: PROFIT_TYPE.PLEDGE,
+        remark: 'pledge amount',
+        t,
+      });
+      await this.userAssetService.modifyUserAsset({
+        userId,
+        coinId: secAmount.coinId,
+        amount: pledgeAmount,
+        currency: ASSET_FIELD.PLEDGE,
+        type: PROFIT_TYPE.PLEDGE,
+        remark: 'pledge amount',
+        t,
+      });
+      await this.pledgeRecordMapping.saveNew(
+        {
+          userId,
+          poolId,
+          secAmount: pledgeAmount,
+          startAt: new Date(),
+          status: POOL_STATUS.STARTING,
+          endAt: pool.endAt,
+        },
+        { transaction: t }
+      );
+      await t.commit();
+    } catch (error) {
+      await t.rollback();
+      throw error;
+    }
+    return true;
+  }
+
+  /**
+   * 释放奖池
+   * @returns
+   */
+  async releasePool() {
+    const records = await this.pledgeRecordMapping.findAll({
+      status: POOL_STATUS.STARTING,
+      endAt: { [Op.lte]: new Date() },
+    });
+    for (const record of records) {
+      await this._releaseRecord(record);
+    }
+    return true;
+  }
+
+  /**
+   * 释放奖励
+   * @param item
+   */
+  private async _releaseRecord(item: PledgeRecordEntity) {
+    const { userId, secAmount } = item;
+    const secCoin = await this.userAssetService.getUserSecAmount(userId);
+    const t = await this.mapping.getTransaction();
+    try {
+      await this.userAssetService.modifyUserAsset({
+        userId,
+        coinId: secCoin.coinId,
+        amount: secAmount,
+        currency: ASSET_FIELD.BALANCE,
+        type: PROFIT_TYPE.RELEASE,
+        remark: 'release pledge amount',
+        t,
+      });
+      await this.userAssetService.modifyUserAsset({
+        userId,
+        coinId: secCoin.coinId,
+        amount: -secAmount,
+        currency: ASSET_FIELD.PLEDGE,
+        type: PROFIT_TYPE.RELEASE,
+        remark: 'release pledge amount',
+        t,
+      });
+      await item.update({ status: POOL_STATUS.ENDING }, { transaction: t });
+      await t.commit();
+    } catch (error) {
+      await t.rollback();
+      throw error;
+    }
   }
 
   private async _startPool() {

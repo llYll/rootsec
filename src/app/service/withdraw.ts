@@ -38,7 +38,7 @@ export class WithdrawService extends BaseService<WithdrawEntity> {
    * @returns
    */
   async applyWithdraw(param: ApplyWithdrawDTO) {
-    const userId = this.ctx.state.userId;
+    const userId = this.ctx.userContext.userId;
     const { coinId, amount } = param;
     const userAsset = await this.assetService.getUserAssetOneCoin(
       userId,

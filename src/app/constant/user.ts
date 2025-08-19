@@ -17,6 +17,8 @@ export enum ASSET_FIELD {
 export enum VERIFY_CODE_TYPE {
   REGISTER = 1, //注册
   WITHDRAW = 2, //提现
+  SET_TRADE_PASSWORD = 3, //设置交易密码
+  MODIFY_EMAIL = 4, //修改邮箱
 }
 
 export enum WITHDRAW_STATUS {

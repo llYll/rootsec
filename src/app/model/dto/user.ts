@@ -36,10 +36,6 @@ export class RegisterDTO {
   @ApiProperty({ type: 'string', description: '密码' })
   @Rule(RuleType.string().required())
   password: string;
-
-  @ApiProperty({ type: 'string', description: '邀请码' })
-  @Rule(RuleType.string().allow('').optional())
-  inviteCode?: string;
 }
 
 export class UserProfitDTO extends QueryParamDTO {
@@ -88,4 +84,68 @@ export class ApplyWithdrawDTO {
   @ApiProperty({ type: 'string', description: '提现地址' })
   @Rule(RuleType.string().optional().allow(''))
   remark?: string;
+}
+
+export class UserAssetInfoDTO {
+  @ApiProperty({ type: 'string', description: '用户id' })
+  @Rule(RuleType.string().allow('').optional())
+  uid?: string;
+
+  @ApiProperty({ type: 'string', description: '邮件 ' })
+  @Rule(RuleType.string().allow('').optional())
+  coinName: string;
+}
+
+export class SendEmailDTO {
+  @ApiProperty({ type: 'number', description: '交易密码' })
+  @Rule(RuleType.number().required())
+  type: number;
+
+  @ApiProperty({ type: 'string', description: '交易密码' })
+  @Rule(RuleType.string().allow('').optional())
+  email?: string;
+}
+
+export class SetTradePwdDTO {
+  @ApiProperty({ type: 'string', description: '交易密码' })
+  @Rule(RuleType.string().required())
+  tradePwd: string;
+
+  @ApiProperty({ type: 'string', description: '验证码' })
+  @Rule(RuleType.string().required())
+  verifyCode: string;
+}
+
+export class SetGoogleSecretDTO {
+  @ApiProperty({ type: 'string', description: '谷歌秘钥' })
+  @Rule(RuleType.string().required())
+  secret: string;
+
+  @ApiProperty({ type: 'string', description: '验证码' })
+  @Rule(RuleType.string().required())
+  code: string;
+}
+
+export class ModifyEmailDTO {
+  @ApiProperty({ type: 'string', description: '谷歌秘钥' })
+  @Rule(RuleType.string().required())
+  email: string;
+
+  @ApiProperty({ type: 'string', description: '验证码' })
+  @Rule(RuleType.string().required())
+  oldVerifyCode: string;
+
+  @ApiProperty({ type: 'string', description: '验证码' })
+  @Rule(RuleType.string().required())
+  newVerifyCode: string;
+}
+
+export class ModifyPasswordDTO {
+  @ApiProperty({ type: 'string', description: '谷歌秘钥' })
+  @Rule(RuleType.string().required())
+  oldPassword: string;
+
+  @ApiProperty({ type: 'string', description: '验证码' })
+  @Rule(RuleType.string().required())
+  newPassword: string;
 }

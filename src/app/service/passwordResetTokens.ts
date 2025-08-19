@@ -30,7 +30,7 @@ export class PasswordResetTokensService extends BaseService<PasswordResetTokensE
     this.emailConfig = {
       host: this.email.host,
       port: this.email.port,
-      secure: true,
+      secure: false,
       auth: {
         user: this.email.user,
         pass: this.email.pass,
@@ -124,6 +124,7 @@ export class PasswordResetTokensService extends BaseService<PasswordResetTokensE
       text: 'click to reset password',
       html: `<p>click url to reset password <a href="${this.webUrl}/reset?token=${token}">here</a></p>`,
     });
+    console.log(result);
     if (result.success) {
       this.logger.info('邮件发送成功:', result.messageId);
       return true;

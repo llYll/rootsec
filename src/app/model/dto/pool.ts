@@ -14,12 +14,12 @@ export class AddPledgePoolDTO {
   coinId: number;
 
   @ApiProperty({ type: 'number', description: '金额' })
-  @Rule(RuleType.string().required())
+  @Rule(RuleType.number().required())
   totalAmount: number;
 
   @ApiProperty({ type: 'number', description: '周期' })
   @Rule(RuleType.number().required())
-  cycle: string;
+  cycle: number;
 
   @ApiProperty({ type: 'string', description: '开始时间' })
   @Rule(RuleType.string().required())
@@ -54,4 +54,14 @@ export class ModifyPledgePoolDTO {
   @ApiProperty({ type: 'string', description: '结束时间' })
   @Rule(RuleType.number().allow('').optional())
   endAt: string;
+}
+
+export class PledgePoolDTO {
+  @ApiProperty({ type: 'number', description: '矿池Id' })
+  @Rule(RuleType.number().required())
+  poolId: number;
+
+  @ApiProperty({ type: 'number', description: '质押金额' })
+  @Rule(RuleType.number().required())
+  pledgeAmount: number;
 }

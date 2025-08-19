@@ -22,10 +22,15 @@ export default (appInfo: MidwayAppInfo): MidwayConfig => {
 
   config.jwtWhitelist = [
     '/swagger-ui',
-    '/api/admin/login',
     '/api',
     '/api/user',
     '/metrics',
+    '/api/admin/add',
+    '/api/admin/login',
+    '/api/user/register',
+    '/api/user/login',
+    '/api/user/forget/password',
+    '/api/user/reset/password',
   ];
 
   config.cors = {

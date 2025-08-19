@@ -1,7 +1,7 @@
 import { Column, DataType, Table, Model } from 'sequelize-typescript';
 
 @Table({
-  tableName: 'user_asset',
+  tableName: 'reward_record',
   timestamps: true,
   paranoid: true,
   indexes: [
@@ -9,19 +9,26 @@ import { Column, DataType, Table, Model } from 'sequelize-typescript';
       name: 'PRIMARY',
       unique: true,
       using: 'BTREE',
-      fields: [{ name: 'user_asset_id' }],
+      fields: [{ name: 'reward_id' }],
     },
   ],
 })
-export class UserAssetEntity extends Model {
+export class RewardRecordEntity extends Model {
   @Column({
     autoIncrement: true,
     type: DataType.INTEGER,
     allowNull: false,
     primaryKey: true,
-    field: 'user_asset_id',
+    field: 'reward_id',
   })
-  userAssetId: number;
+  rewardId: number;
+
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    field: 'pool_id',
+  })
+  poolId: number;
 
   @Column({
     type: DataType.INTEGER,
@@ -40,25 +47,22 @@ export class UserAssetEntity extends Model {
   @Column({
     type: DataType.DECIMAL(12, 4),
     allowNull: false,
-    comment: '余额',
-    defaultValue: 0,
+    defaultValue: 0.0,
+    field: 'reward_amount',
   })
-  balance: number;
+  rewardAmount: number;
 
   @Column({
-    type: DataType.DECIMAL(12, 4),
+    type: DataType.DATE,
     allowNull: false,
-    comment: '质押',
-    defaultValue: 0,
+    field: 'release_date',
   })
-  pledge: number;
+  releaseDate: string;
 
   @Column({
-    type: DataType.DECIMAL(12, 4),
+    type: DataType.TINYINT,
     allowNull: false,
-    comment: '提现冻结金额',
-    field: 'freeze_balance',
-    defaultValue: 0,
+    comment: '0:未释放 1:已完成',
   })
-  freezeBalance: number;
+  status: number;
 }

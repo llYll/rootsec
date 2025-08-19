@@ -91,20 +91,4 @@ export class UserInfoEntity extends Model {
     comment: '等级',
   })
   level: number;
-
-  @Column({
-    type: DataType.STRING(6),
-    allowNull: true,
-    comment: '邀请码',
-    field: 'invite_code',
-  })
-  inviteCode: string;
-
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: false,
-    defaultValue: 0,
-    comment: '上级id',
-  })
-  pid: number;
 }

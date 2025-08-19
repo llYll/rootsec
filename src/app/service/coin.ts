@@ -54,7 +54,7 @@ export class CoinService extends BaseService<CoinEntity> {
     if (param.currency) {
       Object.assign(where, { name: param.currency });
     }
-    const coin = await this.mapping.findOne({ where });
+    const coin = await this.mapping.findOne(where);
     return coin;
   }
 
@@ -62,8 +62,14 @@ export class CoinService extends BaseService<CoinEntity> {
    * 获取所有币种
    * @returns
    */
-  async getAll() {
-    const res = await this.mapping.findAll();
+  async getAll(coinName?: string) {
+    const where = {};
+    if (coinName) {
+      Object.assign(where, { name: coinName });
+    }
+    const res = await this.mapping.findAll(where, {
+      raw: true,
+    });
     return res;
   }
 }

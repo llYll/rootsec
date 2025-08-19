@@ -7,6 +7,7 @@ import BigNumber from 'bignumber.js';
 import * as speakeasy from 'speakeasy';
 
 import { ErrorLevelEnum, MyError } from './myError';
+import dayjs = require('dayjs');
 
 const DATE_FORMATE = 'YYYY-MM-DD HH:mm:ss';
 
@@ -15,9 +16,6 @@ type BigParam = BigNumber | string | number;
 @Provide()
 @Scope(ScopeEnum.Request, { allowDowngrade: true })
 export class Utils {
-  @Inject('dayjs')
-  dayjsTool;
-
   @Inject()
   jwtService: JwtService;
 
@@ -34,43 +32,43 @@ export class Utils {
   }
 
   getDateNow(date = DATE_FORMATE): string {
-    const dateStr: string = this.dayjsTool().format(date);
+    const dateStr: string = dayjs().format(date);
     return dateStr;
   }
 
   getDateEndTime(time?): string {
-    return this.dayjsTool(time).endOf('day').format(DATE_FORMATE);
+    return dayjs(time).endOf('day').format(DATE_FORMATE);
   }
 
   getDateStartTime(time?): string {
-    return this.dayjsTool(time).startOf('day').format(DATE_FORMATE);
+    return dayjs(time).startOf('day').format(DATE_FORMATE);
   }
 
   getDateSeconds(time?): number {
-    return this.dayjsTool(time).unix();
+    return dayjs(time).unix();
   }
 
   isBeforeOneDay(date, chooseDate = null) {
     const lastDate = chooseDate ? chooseDate : this.getDateNow('YYYY-MM-DD');
-    return this.dayjsTool(lastDate).isBefore(this.dayjsTool(date));
+    return dayjs(lastDate).isBefore(dayjs(date));
   }
 
   isAfterOneDay(date, chooseDate = null) {
     const lastDate = chooseDate ? chooseDate : this.getDateNow('YYYY-MM-DD');
-    return this.dayjsTool(lastDate).isAfter(this.dayjsTool(date));
+    return dayjs(lastDate).isAfter(dayjs(date));
   }
 
-  getDateDiff(date1, date2, format = 'day'): number {
-    return this.dayjsTool(date1).diff(this.dayjsTool(date2), format);
+  getDateDiff(date1, date2, format: any = 'day'): number {
+    return dayjs(date1).diff(dayjs(date2), format);
   }
 
   getDateNowAdd8hours(time?): Date {
-    const dateStr: Date = this.dayjsTool(time).add(8, 'hour').toDate();
+    const dateStr: Date = dayjs(time).add(8, 'hour').toDate();
     return dateStr;
   }
 
-  addTime(time, value, unit = 'hour', format = DATE_FORMATE): Date {
-    const date = this.dayjsTool(time).add(value, unit).format(format);
+  addTime(time, value, unit: any = 'hour', format = DATE_FORMATE) {
+    const date = dayjs(time).add(value, unit).format(format);
     return date;
   }
 
@@ -230,7 +228,7 @@ export class Utils {
   }
 
   generateSalt(length: number): string {
-    return crypto.randomBytes(length).toString('hex');
+    return crypto.randomBytes(length).toString('hex').substring(0, length);
   }
 
   hashPassword(password: string, salt: string): string {

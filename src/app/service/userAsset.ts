@@ -7,7 +7,7 @@ import { CoinService } from './coin';
 import { IAddProfitDTO, IModifyAsset } from '../../interface';
 import { ASSET_FIELD } from '../constant/user';
 import { UserProfitMapping } from '../mapping/userProfit';
-import { UserProfitDTO } from '../model/dto/user';
+import { UserAssetInfoDTO, UserProfitDTO } from '../model/dto/user';
 
 @Provide()
 export class UserAssetService extends BaseService<UserAssetEntity> {
@@ -28,9 +28,12 @@ export class UserAssetService extends BaseService<UserAssetEntity> {
    * @param userId
    * @returns
    */
-  async getUserAsset(userId: number) {
-    const coinList = await this.coinService.getAll();
-    const userAsset = await this.mapping.findAll({ userId });
+  async getUserAsset(userParam: UserAssetInfoDTO) {
+    const { uid, coinName } = userParam;
+    const userId = uid ? uid : this.ctx.userContext.userId;
+    const coinList = await this.coinService.getAll(coinName);
+    const param = { userId };
+    const userAsset = await this.mapping.findAll(param);
     const res = coinList.map(item => {
       const asset = userAsset.find(x => x.coinId === item.coinId);
       return {
@@ -126,7 +129,8 @@ export class UserAssetService extends BaseService<UserAssetEntity> {
    * @returns
    */
   async getUserProfit(param: UserProfitDTO) {
-    const { page, limit, userId, coinName, type } = param;
+    const userId = this.ctx.userContext.userId;
+    const { page, limit, coinName, type } = param;
     const where = {};
     if (userId) {
       Object.assign(where, { userId });
@@ -143,5 +147,23 @@ export class UserAssetService extends BaseService<UserAssetEntity> {
       where
     );
     return res;
+  }
+
+  async getUserSecAmount(userId: number) {
+    const record = await this.coinService.getCoinDetail({ currency: 'sec' });
+    const asset = await this.mapping.findOne({
+      userId,
+      coinId: record.coinId,
+    });
+    if (!asset) {
+      return this.mapping.saveNew({
+        userId,
+        coinId: record.coinId,
+        balance: 0,
+        pledge: 0,
+        freezeBalance: 0,
+      });
+    }
+    return asset;
   }
 }

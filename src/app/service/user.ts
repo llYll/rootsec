@@ -5,8 +5,17 @@ import { UserInfoMapping } from '../mapping/userInfo';
 import { BaseService } from '../../core/baseService';
 import { UserInfoEntity } from '../entity/userInfo';
 import { MyError, ErrorLevelEnum } from '../comm/myError';
-import { UserStatus } from '../constant/user';
-import { LoginDTO, RegisterDTO, ResetPasswordDTO } from '../model/dto/user';
+import { UserStatus, VERIFY_CODE_TYPE } from '../constant/user';
+import {
+  LoginDTO,
+  ModifyEmailDTO,
+  ModifyPasswordDTO,
+  RegisterDTO,
+  ResetPasswordDTO,
+  SendEmailDTO,
+  SetGoogleSecretDTO,
+  SetTradePwdDTO,
+} from '../model/dto/user';
 import { PasswordResetTokensService } from './passwordResetTokens';
 import { Utils } from '../comm/utils';
 import RedisUtils from '../comm/redis';
@@ -37,23 +46,19 @@ export class UserService extends BaseService<UserInfoEntity> {
    * @returns
    */
   async register(params: RegisterDTO): Promise<boolean> {
-    const { username, email, password, inviteCode } = params;
+    const { username, email, password } = params;
     const user = await this.mapping.findOne({ username });
     if (user) {
       throw new MyError('user has been registered', ErrorLevelEnum.P4);
     }
     const salt = this.utils.generateSalt(16);
     const passwordHash = this.utils.hashPassword(password, salt);
-    const parent = await this.mapping.findOne({ inviteCode });
-    const pid = parent ? parent.userId : 0;
     await this.mapping.saveNew({
       email,
       username,
-      salt,
+      passwordSalt: salt,
       status: UserStatus.NORMAL,
       passwordHash,
-      pid,
-      inviteCode: this.utils.generateSalt(6),
     });
     return true;
   }
@@ -159,6 +164,23 @@ export class UserService extends BaseService<UserInfoEntity> {
   }
 
   /**
+   * 发送验证码
+   * @param param
+   * @returns
+   */
+  async sendUserVerifyCode(param: SendEmailDTO): Promise<boolean> {
+    const { email, type } = param;
+    let contract = email;
+    if (!contract) {
+      const userId = this.ctx.userContext.userId;
+      const user = await this.mapping.findOne({ userId });
+      contract = user.email;
+    }
+    await this.sendEmailVerifyCode(contract, type, 5 * 60);
+    return true;
+  }
+
+  /**
    * 发送邮箱验证码
    * @param email
    * @param type
@@ -194,6 +216,86 @@ export class UserService extends BaseService<UserInfoEntity> {
     if (code != ret) {
       throw new MyError('code incorrect', ErrorLevelEnum.P4);
     }
+    return true;
+  }
+
+  /**
+   * 设置安全密码
+   * @param param
+   */
+  async setTradePwd(param: SetTradePwdDTO) {
+    const { tradePwd, verifyCode } = param;
+    const userId = this.ctx.userContext.userId;
+    const user = await this.mapping.findOne({ userId });
+    await this.checkEmailVerifyCode(
+      user.email,
+      VERIFY_CODE_TYPE.SET_TRADE_PASSWORD,
+      verifyCode
+    );
+    const tradeSalt = this.utils.generateSalt(16);
+    const tradePasswordHash = this.utils.hashPassword(tradePwd, tradeSalt);
+    await this.mapping.modify(
+      {
+        tradePasswordHash,
+        tradePasswordSalt: tradeSalt,
+      },
+      { userId }
+    );
+    return true;
+  }
+
+  /**
+   * 设置谷歌秘钥
+   * @param param
+   * @returns
+   */
+  async setGoogleSecret(param: SetGoogleSecretDTO) {
+    const { secret, code } = param;
+    this.utils.checkGoogleVerify(secret, code);
+    const userId = this.ctx.userContext.userId;
+    await this.mapping.modify({ googleSecret: secret }, { userId });
+    return true;
+  }
+
+  /**
+   * 修改邮箱
+   * @param param
+   * @returns
+   */
+  async modifyEmail(param: ModifyEmailDTO) {
+    const userId = this.ctx.userContext.userId;
+    const { email, oldVerifyCode, newVerifyCode } = param;
+    const user = await this.mapping.findOne({ userId });
+    await this.checkEmailVerifyCode(
+      user.email,
+      VERIFY_CODE_TYPE.MODIFY_EMAIL,
+      oldVerifyCode
+    );
+    await this.checkEmailVerifyCode(
+      email,
+      VERIFY_CODE_TYPE.MODIFY_EMAIL,
+      newVerifyCode
+    );
+    await this.mapping.modify({ email }, { userId });
+    return true;
+  }
+
+  /**
+   * 修改密码
+   * @param param
+   * @returns
+   */
+  async modifyPassword(param: ModifyPasswordDTO) {
+    const { oldPassword, newPassword } = param;
+    const userId = this.ctx.userContext.userId;
+    const user = await this.mapping.findOne({ userId });
+    const oldPwd = this.utils.hashPassword(oldPassword, user.passwordSalt);
+    if (oldPwd !== user.passwordHash) {
+      throw new MyError('old password incorrect', ErrorLevelEnum.P4);
+    }
+    const salt = this.utils.generateSalt(16);
+    const passwordHash = this.utils.hashPassword(newPassword, salt);
+    await this.mapping.modify({ passwordSalt: salt, passwordHash }, { userId });
     return true;
   }
 }
